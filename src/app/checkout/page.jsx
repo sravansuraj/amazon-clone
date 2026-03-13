@@ -1,16 +1,18 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useOrders } from '@/context/OrderContext';
+import { useAuth } from '@/context/AuthContext';
 import { coupons } from '@/data/products';
 
 const steps = ['Delivery', 'Payment', 'Review'];
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, totalPrice, totalItems, changeQty, removeItem } = useCart();
+  const { cart, totalPrice, totalItems, changeQty, removeItem, clearCart } = useCart();
   const { placeOrder } = useOrders();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [placed, setPlaced] = useState(false);
   const [placedOrder, setPlacedOrder] = useState(null);
@@ -18,10 +20,14 @@ export default function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState('');
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', address: '', city: '', pincode: '', state: '',
+    name: '', email: user?.email || '', phone: '', address: '', city: '', pincode: '', state: '',
     cardName: '', cardNumber: '', expiry: '', cvv: '', upi: '',
     payMethod: 'card',
   });
+
+  useEffect(() => {
+    if (!user) router.push('/auth/login');
+  }, [user]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -56,8 +62,8 @@ export default function CheckoutPage() {
     setCouponError('');
   };
 
-  const handlePlaceOrder = () => {
-    const order = placeOrder({
+  const handlePlaceOrder = async () => {
+    const order = await placeOrder({
       items: cart,
       grandTotal,
       totalItems,
@@ -67,11 +73,16 @@ export default function CheckoutPage() {
       payMethod: form.payMethod,
       city: form.city || 'Hyderabad',
       state: form.state || 'Telangana',
-      name: form.name || 'Sravan',
+      name: form.name || user?.email?.split('@')[0] || 'User',
     });
-    setPlacedOrder(order);
-    setPlaced(true);
+    if (order) {
+      await clearCart();
+      setPlacedOrder(order);
+      setPlaced(true);
+    }
   };
+
+  if (!user) return null;
 
   if (cart.length === 0 && !placed) return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -89,7 +100,7 @@ export default function CheckoutPage() {
       <div className="bg-white rounded-2xl p-10 max-w-md w-full text-center shadow-lg border border-gray-200">
         <div className="text-7xl mb-4">🎉</div>
         <h1 className="text-2xl font-bold text-green-600 mb-2">Order Placed!</h1>
-        <p className="text-gray-600 mb-1">Thank you, <strong>{form.name || 'Sravan'}</strong>!</p>
+        <p className="text-gray-600 mb-1">Thank you, <strong>{form.name || user?.email?.split('@')[0]}</strong>!</p>
         <p className="text-gray-500 text-sm mb-2">Your order of <strong>{totalItems} item{totalItems > 1 ? 's' : ''}</strong> has been confirmed.</p>
         {discount > 0 && <p className="text-green-600 text-sm mb-2">🎟️ You saved <strong>₹{discount.toLocaleString()}</strong> with coupon!</p>}
         <p className="text-gray-700 font-semibold mb-2">Total paid: ₹{grandTotal.toLocaleString()}</p>
@@ -99,12 +110,8 @@ export default function CheckoutPage() {
           <p className="text-sm text-green-600">Tomorrow by 9 PM</p>
         </div>
         <div className="flex flex-col gap-3">
-          <button onClick={() => router.push('/orders')} className="btn-add text-base py-3">
-            View Order History 📦
-          </button>
-          <button onClick={() => router.push('/')} className="w-full border border-gray-300 rounded-full py-2.5 text-sm font-medium hover:bg-gray-50">
-            Continue Shopping
-          </button>
+          <button onClick={() => router.push('/orders')} className="btn-add text-base py-3">View Order History 📦</button>
+          <button onClick={() => router.push('/')} className="w-full border border-gray-300 rounded-full py-2.5 text-sm font-medium hover:bg-gray-50">Continue Shopping</button>
         </div>
       </div>
     </div>
@@ -131,7 +138,6 @@ export default function CheckoutPage() {
 
       <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-          {/* Step 1 - Delivery */}
           {step === 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-lg font-bold mb-5">📦 Delivery Address</h2>
@@ -147,13 +153,8 @@ export default function CheckoutPage() {
                 ].map(f => (
                   <div key={f.k} className={f.col === 2 ? 'sm:col-span-2' : ''}>
                     <label className="text-sm font-medium text-gray-700 block mb-1">{f.label}</label>
-                    <input
-                      type="text"
-                      value={form[f.k]}
-                      onChange={e => set(f.k, e.target.value)}
-                      placeholder={f.placeholder}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-yellow-400"
-                    />
+                    <input type="text" value={form[f.k]} onChange={e => set(f.k, e.target.value)} placeholder={f.placeholder}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-yellow-400" />
                   </div>
                 ))}
               </div>
@@ -161,7 +162,6 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Step 2 - Payment */}
           {step === 1 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-lg font-bold mb-5">💳 Payment Method</h2>
@@ -212,7 +212,6 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Step 3 - Review */}
           {step === 2 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-lg font-bold mb-5">✅ Review Your Order</h2>
@@ -245,7 +244,6 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        {/* Order Summary */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl border border-gray-200 p-5 sticky top-20">
             <h2 className="text-base font-bold mb-4 pb-3 border-b border-gray-100">Order Summary</h2>
@@ -261,21 +259,14 @@ export default function CheckoutPage() {
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={couponCode}
-                    onChange={e => setCouponCode(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && applyCoupon()}
-                    placeholder="Enter code"
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-yellow-400"
-                  />
+                  <input type="text" value={couponCode} onChange={e => setCouponCode(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && applyCoupon()} placeholder="Enter code"
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-yellow-400" />
                   <button onClick={applyCoupon} className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-xs px-3 py-1.5 rounded-lg">Apply</button>
                 </div>
               )}
               {couponError && <p className="text-xs text-red-500 mt-1">{couponError}</p>}
-              {!appliedCoupon && !couponError && (
-                <p className="text-xs text-gray-400 mt-1">Try: SRAVAN10, SAVE200, PRIME50, NEWUSER</p>
-              )}
+              {!appliedCoupon && !couponError && <p className="text-xs text-gray-400 mt-1">Try: SRAVAN10, SAVE200, PRIME50, NEWUSER</p>}
             </div>
             <div className="space-y-2 text-sm mb-4">
               <div className="flex justify-between text-gray-600"><span>Items ({totalItems})</span><span>₹{totalPrice.toLocaleString()}</span></div>
@@ -284,9 +275,7 @@ export default function CheckoutPage() {
                 <span className={deliveryFee === 0 ? 'text-green-600 font-medium' : ''}>{deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}</span>
               </div>
               <div className="flex justify-between text-gray-600"><span>GST (18%)</span><span>₹{tax.toLocaleString()}</span></div>
-              {discount > 0 && (
-                <div className="flex justify-between text-green-600 font-medium"><span>Discount</span><span>− ₹{discount.toLocaleString()}</span></div>
-              )}
+              {discount > 0 && <div className="flex justify-between text-green-600 font-medium"><span>Discount</span><span>− ₹{discount.toLocaleString()}</span></div>}
             </div>
             <div className="flex justify-between font-bold text-base pt-3 border-t border-gray-200">
               <span>Order Total</span><span>₹{grandTotal.toLocaleString()}</span>

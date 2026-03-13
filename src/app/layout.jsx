@@ -4,6 +4,8 @@ import { WishlistProvider } from '@/context/WishlistContext';
 import { RecentlyViewedProvider } from '@/context/RecentlyViewedContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { OrderProvider } from '@/context/OrderContext';
+import { AuthProvider } from '@/context/AuthContext';
+import { ToastProvider } from '@/components/Toast';
 
 export const metadata = {
   title: 'Amazon Clone',
@@ -14,17 +16,21 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <ThemeProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <RecentlyViewedProvider>
-                <OrderProvider>
-                  {children}
-                </OrderProvider>
-              </RecentlyViewedProvider>
-            </WishlistProvider>
-          </CartProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <RecentlyViewedProvider>
+                  <OrderProvider>
+                    <ToastProvider>
+                      {children}
+                    </ToastProvider>
+                  </OrderProvider>
+                </RecentlyViewedProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

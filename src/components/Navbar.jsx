@@ -5,6 +5,7 @@ import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useOrders } from '@/context/OrderContext';
+import { useAuth } from '@/context/AuthContext';
 import { products } from '@/data/products';
 
 export default function Navbar({ onSearch, onCategoryClick, onLiveSearch }) {
@@ -12,17 +13,19 @@ export default function Navbar({ onSearch, onCategoryClick, onLiveSearch }) {
   const { wishlist } = useWishlist();
   const { dark, setDark } = useTheme();
   const { orders } = useOrders();
+  const { user, signOut } = useAuth();
   const [query, setQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [filtered, setFiltered] = useState([]);
   const router = useRouter();
   const searchRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   useEffect(() => {
     const handleClick = (e) => {
-      if (searchRef.current && !searchRef.current.contains(e.target)) {
-        setShowDropdown(false);
-      }
+      if (searchRef.current && !searchRef.current.contains(e.target)) setShowDropdown(false);
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setShowUserMenu(false);
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -57,6 +60,12 @@ export default function Navbar({ onSearch, onCategoryClick, onLiveSearch }) {
     setShowDropdown(false);
     setQuery('');
     router.push(`/product/${product.id}`);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setShowUserMenu(false);
+    router.push('/');
   };
 
   return (
@@ -119,14 +128,60 @@ export default function Navbar({ onSearch, onCategoryClick, onLiveSearch }) {
           <button
             onClick={() => setDark(!dark)}
             className="text-white text-xl px-2 py-1 rounded hover:outline hover:outline-1 hover:outline-white"
-            title="Toggle dark mode"
           >
             {dark ? '☀️' : '🌙'}
           </button>
-          <div className="text-white text-xs px-2 py-1 rounded hover:outline hover:outline-1 hover:outline-white cursor-pointer">
-            <span className="block text-gray-300">Hello, Sravan</span>
-            <strong className="text-sm">Account & Lists</strong>
+
+          {/* User menu */}
+          <div className="relative" ref={userMenuRef}>
+            {user ? (
+              <button
+                onClick={() => setShowUserMenu(prev => !prev)}
+                className="text-white text-xs px-2 py-1 rounded hover:outline hover:outline-1 hover:outline-white cursor-pointer text-left"
+              >
+                <span className="block text-gray-300">Hello,</span>
+                <strong className="text-sm truncate max-w-[120px] block">{user.email.split('@')[0]}</strong>
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push('/auth/login')}
+                className="text-white text-xs px-2 py-1 rounded hover:outline hover:outline-1 hover:outline-white cursor-pointer text-left"
+              >
+                <span className="block text-gray-300">Hello, Sign in</span>
+                <strong className="text-sm">Account & Lists</strong>
+              </button>
+            )}
+
+            {showUserMenu && user && (
+              <div className="absolute right-0 top-12 bg-white rounded-xl shadow-xl border border-gray-200 w-52 z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-xs text-gray-500">Signed in as</p>
+                  <p className="text-sm font-medium text-gray-800 truncate">{user.email}</p>
+                </div>
+                <button
+                  onClick={() => { setShowUserMenu(false); router.push('/orders'); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  📦 Your Orders
+                </button>
+                <button
+                  onClick={() => { setShowUserMenu(false); router.push('/wishlist'); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  ❤️ Your Wishlist
+                </button>
+                <div className="border-t border-gray-100">
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2"
+                  >
+                    🚪 Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
+
           <div
             onClick={() => router.push('/wishlist')}
             className="text-white text-xs px-2 py-1 rounded hover:outline hover:outline-1 hover:outline-white cursor-pointer"
@@ -144,7 +199,7 @@ export default function Navbar({ onSearch, onCategoryClick, onLiveSearch }) {
         </div>
 
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={() => user ? setIsOpen(true) : router.push('/auth/login')}
           className="flex items-center gap-1 text-white px-2 py-1 rounded hover:outline hover:outline-1 hover:outline-white"
         >
           <span className="text-2xl">🛒</span>

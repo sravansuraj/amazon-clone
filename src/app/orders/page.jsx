@@ -1,6 +1,8 @@
 'use client';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrders } from '@/context/OrderContext';
+import { useAuth } from '@/context/AuthContext';
 
 const statusColors = {
   'Confirmed': 'bg-blue-100 text-blue-700',
@@ -14,6 +16,13 @@ const statusSteps = ['Confirmed', 'Shipped', 'Out for Delivery', 'Delivered'];
 export default function OrdersPage() {
   const router = useRouter();
   const { orders } = useOrders();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) router.push('/auth/login');
+  }, [user]);
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -41,7 +50,6 @@ export default function OrdersPage() {
           <div className="space-y-6">
             {orders.map(order => (
               <div key={order.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                {/* Order header */}
                 <div className="bg-gray-50 px-5 py-3 flex flex-wrap items-center gap-4 border-b border-gray-200">
                   <div>
                     <p className="text-xs text-gray-500">Order placed</p>
@@ -56,22 +64,16 @@ export default function OrdersPage() {
                     <p className="text-sm font-medium text-gray-800">{order.city}, {order.state}</p>
                   </div>
                   <div className="ml-auto flex items-center gap-3">
-                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusColors[order.status]}`}>
-                      {order.status}
-                    </span>
+                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusColors[order.status]}`}>{order.status}</span>
                     <p className="text-xs text-gray-500 font-mono">{order.id}</p>
                   </div>
                 </div>
 
-                {/* Order tracker */}
                 <div className="px-5 py-4 border-b border-gray-100">
                   <div className="flex items-center justify-between relative">
-                    {/* Progress line */}
                     <div className="absolute left-0 right-0 top-3 h-0.5 bg-gray-200 z-0" />
-                    <div
-                      className="absolute left-0 top-3 h-0.5 bg-yellow-400 z-0 transition-all"
-                      style={{ width: `${(statusSteps.indexOf(order.status) / (statusSteps.length - 1)) * 100}%` }}
-                    />
+                    <div className="absolute left-0 top-3 h-0.5 bg-yellow-400 z-0 transition-all"
+                      style={{ width: `${(statusSteps.indexOf(order.status) / (statusSteps.length - 1)) * 100}%` }} />
                     {statusSteps.map((s, i) => {
                       const currentIdx = statusSteps.indexOf(order.status);
                       const done = i <= currentIdx;
@@ -88,18 +90,12 @@ export default function OrdersPage() {
                   <p className="text-xs text-green-600 font-medium mt-3">🚚 {order.estimatedDelivery}</p>
                 </div>
 
-                {/* Order items */}
                 <div className="px-5 py-4">
                   <div className="space-y-3">
                     {order.items.map(item => (
-                      <div
-                        key={item.id}
-                        className="flex gap-3 items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 -mx-2 transition-colors"
-                        onClick={() => router.push(`/product/${item.id}`)}
-                      >
-                        <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center text-2xl shrink-0 border border-gray-100">
-                          {item.emoji}
-                        </div>
+                      <div key={item.id} className="flex gap-3 items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 -mx-2"
+                        onClick={() => router.push(`/product/${item.id}`)}>
+                        <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center text-2xl shrink-0 border border-gray-100">{item.emoji}</div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-gray-800 line-clamp-1 hover:text-orange-500">{item.name}</p>
                           <p className="text-xs text-gray-500 mt-0.5">Qty: {item.qty} · ₹{item.price.toLocaleString()} each</p>
@@ -108,20 +104,13 @@ export default function OrdersPage() {
                       </div>
                     ))}
                   </div>
-
-                  {/* Order footer */}
                   <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
                     <div className="text-xs text-gray-500 space-y-0.5">
                       {order.discount > 0 && <p className="text-green-600">🎟️ Coupon saved ₹{order.discount.toLocaleString()}</p>}
                       {order.deliveryFee === 0 && <p className="text-green-600">🚚 Free delivery</p>}
                       <p>Payment: {order.payMethod === 'card' ? 'Credit/Debit Card' : order.payMethod === 'upi' ? 'UPI' : 'Cash on Delivery'}</p>
                     </div>
-                    <button
-                      onClick={() => router.push('/')}
-                      className="text-sm text-orange-500 hover:text-orange-600 font-medium hover:underline"
-                    >
-                      Buy Again →
-                    </button>
+                    <button onClick={() => router.push('/')} className="text-sm text-orange-500 hover:text-orange-600 font-medium hover:underline">Buy Again →</button>
                   </div>
                 </div>
               </div>

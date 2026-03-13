@@ -23,7 +23,7 @@ export default function ProductPage({ params }) {
   const { id } = use(params);
   const router = useRouter();
   const product = products.find(p => p.id === parseInt(id));
-  const { addToCart } = useCart();
+  const { addItem } = useCart();
   const { toggleWishlist, isWishlisted } = useWishlist();
   const { addToRecentlyViewed } = useRecentlyViewed();
   const [qty, setQty] = useState(1);
@@ -46,7 +46,7 @@ export default function ProductPage({ params }) {
   );
 
   const wishlisted = isWishlisted(product.id);
-  const handleAddToCart = () => { for (let i = 0; i < qty; i++) addToCart(product); };
+  const handleAddToCart = () => { for (let i = 0; i < qty; i++) addItem(product); };
 
   const handleAISummary = async () => {
     setSummaryLoading(true);

@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { OrderProvider } from '@/context/OrderContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/components/Toast';
+import { NotificationProvider } from '@/context/NotificationContext';
 
 export const metadata = {
   title: 'Amazon Clone',
@@ -22,9 +23,11 @@ export default function RootLayout({ children }) {
               <WishlistProvider>
                 <RecentlyViewedProvider>
                   <OrderProvider>
-                    <ToastProvider>
-                      {children}
-                    </ToastProvider>
+                    <NotificationProvider>
+                      <ToastProvider>
+                        {children}
+                      </ToastProvider>
+                    </NotificationProvider>
                   </OrderProvider>
                 </RecentlyViewedProvider>
               </WishlistProvider>

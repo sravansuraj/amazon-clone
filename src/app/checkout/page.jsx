@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useOrders } from '@/context/OrderContext';
 import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/context/NotificationContext';
 import { coupons } from '@/data/products';
 
 const steps = ['Delivery', 'Payment', 'Review'];
@@ -13,9 +14,12 @@ export default function CheckoutPage() {
   const { cart, totalPrice, totalItems, changeQty, removeItem, clearCart } = useCart();
   const { placeOrder } = useOrders();
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const [step, setStep] = useState(0);
   const [placed, setPlaced] = useState(false);
   const [placedOrder, setPlacedOrder] = useState(null);
+  const [emailBody, setEmailBody] = useState('');
+  const [showEmail, setShowEmail] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState('');
@@ -75,8 +79,24 @@ export default function CheckoutPage() {
       state: form.state || 'Telangana',
       name: form.name || user?.email?.split('@')[0] || 'User',
     });
+
     if (order) {
       await clearCart();
+
+      // Add notification
+      await addNotification(`Order ${order.id} placed! ₹${grandTotal.toLocaleString()} — Delivering to ${form.city || 'Hyderabad'}`, 'order');
+
+      // Generate AI email
+      try {
+        const res = await fetch('/api/send-order-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order, email: user.email, items: cart }),
+        });
+        const data = await res.json();
+        if (data.emailBody) setEmailBody(data.emailBody);
+      } catch {}
+
       setPlacedOrder(order);
       setPlaced(true);
     }
@@ -104,7 +124,24 @@ export default function CheckoutPage() {
         <p className="text-gray-500 text-sm mb-2">Your order of <strong>{totalItems} item{totalItems > 1 ? 's' : ''}</strong> has been confirmed.</p>
         {discount > 0 && <p className="text-green-600 text-sm mb-2">🎟️ You saved <strong>₹{discount.toLocaleString()}</strong> with coupon!</p>}
         <p className="text-gray-700 font-semibold mb-2">Total paid: ₹{grandTotal.toLocaleString()}</p>
-        <p className="text-xs text-gray-400 font-mono mb-6">{placedOrder.id}</p>
+        <p className="text-xs text-gray-400 font-mono mb-4">{placedOrder.id}</p>
+
+        {emailBody && (
+          <div className="mb-4">
+            <button
+              onClick={() => setShowEmail(prev => !prev)}
+              className="text-sm text-blue-500 hover:underline"
+            >
+              {showEmail ? 'Hide' : '📧 View'} AI-generated confirmation email
+            </button>
+            {showEmail && (
+              <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4 text-left text-xs text-gray-700 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                {emailBody}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-left">
           <p className="text-sm text-green-700 font-medium mb-1">📦 Estimated Delivery</p>
           <p className="text-sm text-green-600">Tomorrow by 9 PM</p>
@@ -244,6 +281,7 @@ export default function CheckoutPage() {
           )}
         </div>
 
+        {/* Order Summary */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl border border-gray-200 p-5 sticky top-20">
             <h2 className="text-base font-bold mb-4 pb-3 border-b border-gray-100">Order Summary</h2>
